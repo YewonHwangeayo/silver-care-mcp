@@ -386,10 +386,8 @@ ${locationInfo}
 
 const app = express();
 app.use(cors());
-app.use(express.json());
 
 const API_KEY = process.env.MCP_API_KEY;
-
 
 const mcpHandler = async (req: express.Request, res: express.Response) => {
   try {
@@ -412,7 +410,14 @@ const mcpHandler = async (req: express.Request, res: express.Response) => {
     });
 
     await server.connect(transport);
-    const body = req.method === "GET" ? undefined : req.body;
+    
+    let body: any = undefined;
+    if (req.method !== "GET" && req.method !== "DELETE") {
+      if (req.headers["content-type"]?.includes("application/json")) {
+        body = req.body;
+      }
+    }
+    
     await transport.handleRequest(req, res, body);
   } catch (error: any) {
     if (!res.headersSent) {
@@ -423,6 +428,8 @@ const mcpHandler = async (req: express.Request, res: express.Response) => {
     }
   }
 };
+
+app.use(express.json());
 
 app.post("/mcp", mcpHandler);
 app.get("/mcp", mcpHandler);
