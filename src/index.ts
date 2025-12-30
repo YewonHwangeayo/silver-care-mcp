@@ -489,8 +489,11 @@ const mcpHandler = async (req: express.Request, res: express.Response) => {
       }
     }
 
+    // GET 요청의 경우 body가 없을 수 있으므로 처리
+    const body = req.method === "GET" ? undefined : req.body;
+    
     // Streamable HTTP transport로 요청 처리
-    await transport.handleRequest(req, res, req.body);
+    await transport.handleRequest(req, res, body);
   } catch (error: any) {
     console.error(`❌ [Error] MCP 엔드포인트 에러:`, error);
     if (!res.headersSent) {
@@ -501,6 +504,17 @@ const mcpHandler = async (req: express.Request, res: express.Response) => {
     }
   }
 };
+
+// 루트 경로 응답 (Health check용)
+app.get("/", (req, res) => {
+  res.json({
+    name: "Silver Care MCP",
+    version: "1.0.0",
+    status: "running",
+    endpoint: "/mcp",
+    description: "고령자를 위한 실시간 온열질환 위험도 분석 및 무더위 쉼터 안내 서비스",
+  });
+});
 
 // MCP 엔드포인트 설정 (POST, GET, DELETE 모두 지원)
 app.post("/mcp", mcpHandler);
