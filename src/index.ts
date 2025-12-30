@@ -387,6 +387,14 @@ ${locationInfo}
 const app = express();
 app.use(cors());
 
+// MCP 엔드포인트는 raw body를 읽어야 하므로 express.json()을 적용하지 않음
+app.use((req, res, next) => {
+  if (req.path === '/mcp') {
+    return next();
+  }
+  express.json()(req, res, next);
+});
+
 const mcpHandler = async (req: express.Request, res: express.Response) => {
   try {
     const transport = new StreamableHTTPServerTransport({
@@ -396,21 +404,19 @@ const mcpHandler = async (req: express.Request, res: express.Response) => {
     await server.connect(transport);
     await transport.handleRequest(req, res);
   } catch (error: any) {
+    console.error("MCP handler error:", error);
     if (!res.headersSent) {
       res.status(500).json({
-        error: "Internal Server Error",
-        message: error.message || "서버에서 오류가 발생했습니다.",
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: error.message || "Internal server error",
+        },
+        id: null,
       });
     }
   }
 };
-
-app.use((req, res, next) => {
-  if (req.path === '/mcp') {
-    return next();
-  }
-  express.json()(req, res, next);
-});
 
 app.post("/mcp", mcpHandler);
 app.get("/mcp", mcpHandler);
