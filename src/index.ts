@@ -387,38 +387,14 @@ ${locationInfo}
 const app = express();
 app.use(cors());
 
-const API_KEY = process.env.MCP_API_KEY;
-
 const mcpHandler = async (req: express.Request, res: express.Response) => {
   try {
-    if (API_KEY) {
-      const authHeader = req.headers.authorization;
-      const apiKeyFromHeader = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
-      const apiKeyFromQuery = req.query.apiKey as string | undefined;
-      const providedKey = apiKeyFromHeader || apiKeyFromQuery;
-
-      if (!providedKey || providedKey !== API_KEY) {
-        return res.status(401).json({
-          error: "Unauthorized",
-          message: "인증이 필요하거나 인증 정보가 만료되었습니다.",
-        });
-      }
-    }
-
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });
 
     await server.connect(transport);
-    
-    let body: any = undefined;
-    if (req.method !== "GET" && req.method !== "DELETE") {
-      if (req.headers["content-type"]?.includes("application/json")) {
-        body = req.body;
-      }
-    }
-    
-    await transport.handleRequest(req, res, body);
+    await transport.handleRequest(req, res);
   } catch (error: any) {
     if (!res.headersSent) {
       res.status(500).json({
@@ -429,7 +405,12 @@ const mcpHandler = async (req: express.Request, res: express.Response) => {
   }
 };
 
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.path === '/mcp') {
+    return next();
+  }
+  express.json()(req, res, next);
+});
 
 app.post("/mcp", mcpHandler);
 app.get("/mcp", mcpHandler);
@@ -446,13 +427,6 @@ app.get("/", (req, res) => {
 });
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (err.status === 401 || err.message?.includes("인증")) {
-    return res.status(401).json({
-      error: "Unauthorized",
-      message: "인증이 필요하거나 인증 정보가 만료되었습니다.",
-    });
-  }
-  
   if (!res.headersSent) {
     res.status(500).json({
       error: "Internal Server Error",
