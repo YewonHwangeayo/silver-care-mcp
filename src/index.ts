@@ -465,6 +465,9 @@ app.use((req, res, next) => {
 
 // MCP 엔드포인트 핸들러 (POST, GET, DELETE 지원)
 const mcpHandler = async (req: express.Request, res: express.Response) => {
+  console.log(`📨 [${req.method}] /mcp 요청 수신`);
+  console.log(`   Headers:`, JSON.stringify(req.headers, null, 2));
+  
   try {
     // 인증 미들웨어 적용
     if (API_KEY) {
@@ -492,10 +495,13 @@ const mcpHandler = async (req: express.Request, res: express.Response) => {
     // GET 요청의 경우 body가 없을 수 있으므로 처리
     const body = req.method === "GET" ? undefined : req.body;
     
+    console.log(`🔄 [${req.method}] Transport로 요청 처리 시작`);
     // Streamable HTTP transport로 요청 처리
     await transport.handleRequest(req, res, body);
+    console.log(`✅ [${req.method}] 요청 처리 완료`);
   } catch (error: any) {
     console.error(`❌ [Error] MCP 엔드포인트 에러:`, error);
+    console.error(`   Stack:`, error.stack);
     if (!res.headersSent) {
       res.status(500).json({
         error: "Internal Server Error",
