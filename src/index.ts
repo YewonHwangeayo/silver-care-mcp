@@ -460,16 +460,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Stateless Streamable HTTP Transport 생성 (세션 ID 없음)
-const transport = new StreamableHTTPServerTransport({
-  sessionIdGenerator: undefined, // Stateless 모드
-});
-
-// MCP 서버에 transport 연결 (비동기 초기화)
-server.connect(transport).catch((error) => {
-  console.error("❌ [Error] MCP 서버 연결 실패:", error);
-  process.exit(1);
-});
+// Stateless Streamable HTTP Transport - 각 요청마다 새로 생성
+// Stateless 모드에서는 transport를 재사용하지 않고 각 요청마다 생성
 
 // MCP 엔드포인트 핸들러 (POST, GET, DELETE 지원)
 const mcpHandler = async (req: express.Request, res: express.Response) => {
@@ -488,6 +480,14 @@ const mcpHandler = async (req: express.Request, res: express.Response) => {
         });
       }
     }
+
+    // Stateless 모드: 각 요청마다 새로운 transport 생성
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // Stateless 모드
+    });
+
+    // MCP 서버에 연결
+    await server.connect(transport);
 
     // GET 요청의 경우 body가 없을 수 있으므로 처리
     const body = req.method === "GET" ? undefined : req.body;
